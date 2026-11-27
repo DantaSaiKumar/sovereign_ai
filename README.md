@@ -1,5 +1,77 @@
 # Sovereign AI Workbench
-**Sovereign On-Premise Agentic AI Workbench using Open-Weight Multimodal LLMs for Confidential Industrial Work**
+
+## Project introduction
+
+Sovereign AI Workbench is a Windows-first prototype for evidence-linked industrial document review. It pairs a private local application with a separate, read-only public demonstration that uses synthetic training data only.
+
+### Problem statement
+
+Industrial teams need to review maintenance procedures and equipment records without sending confidential files to public AI services. The local workbench demonstrates a bounded workflow in which documents stay on the user's computer, answers cite retrieved evidence, checks are reviewable, and a qualified person remains responsible for decisions.
+
+### Two distinct applications
+
+| | Local workbench | Public demo |
+| --- | --- | --- |
+| Entry point | `app.py` | `demo_app.py` |
+| Inference | Ollama on this computer; Qwen 2.5 1.5B by default | None; prepared, clearly labelled sample answers |
+| Documents | User-selected local files, stored under ignored `data/` | Fixed synthetic pump inspection record; no upload control |
+| Persistence | Local SQLite, audit events, and reports | No database or persistent user-data storage |
+| Purpose | Actual local document workflow and human review | Explore the interface and sample evidence/verification |
+
+The public demo never claims a prepared answer came from a live AI model. It does not import the local inference, database, ingestion, or audit modules.
+
+### Architecture
+
+```text
+LOCAL APPLICATION
+User Interface → Document Ingestion → Retrieval → Local Ollama LLM
+              → Verification → Human Review → Report Generation
+
+PUBLIC SIMULATED DEMO
+Streamlit UI → Synthetic sample record → Prepared sample answers
+            → Deterministic Python threshold check → In-memory DOCX preview
+```
+
+### Technology stack
+
+Python, Streamlit, Ollama, Qwen 2.5 1.5B, SQLite, python-docx, openpyxl, python-pptx, PyMuPDF, and pytest. The public demo uses Streamlit and python-docx only; it has no model, embedding, GPU, CUDA, or AI API dependency.
+
+### Start the public demo locally
+
+From the repository root, create a separate environment and run:
+
+```powershell
+py -3.11 -m venv .venv-demo
+.\.venv-demo\Scripts\python.exe -m pip install -r requirements-demo.txt
+.\.venv-demo\Scripts\python.exe -m streamlit run demo_app.py
+```
+
+The demo is designed to work without Ollama. It uses fixed synthetic sample content and creates its DOCX report in memory.
+
+### Deploy the public demo to Streamlit Community Cloud
+
+Streamlit Community Cloud discovers dependency manifests by their standard filenames and searches the app's directory before the repository root. It does not select an arbitrary `requirements-demo.txt`. To keep the existing, full local `requirements.txt` unchanged and avoid installing those packages in the public app, deployment uses a tiny wrapper and matching minimal requirements file under `public_demo/`.
+
+1. Push the `deploy/streamlit-demo` branch to GitHub using the commands below.
+2. Sign in to [Streamlit Community Cloud](https://share.streamlit.io/) and choose **Create app**.
+3. Select repository `DantaSaiKumar/sovereign_ai`, branch `deploy/streamlit-demo`, and main file path `public_demo/demo_app.py`.
+4. Choose a supported Python version compatible with the project's Python 3.11+ target, then deploy. Cloud will find `public_demo/requirements.txt` next to that entry point. The wrapper runs the root `demo_app.py`; `requirements-demo.txt` is the canonical minimal dependency list.
+5. After deployment, open the assigned URL and verify the simulated-demo banner, sample questions, threshold result, and DOCX download. The app is not considered deployed successfully until you confirm the public URL works.
+
+The free Community Cloud tier is subject to its availability, resource limits, and sleep/cold-start behavior. Public cloud hosting is not air-gapped. Do not upload confidential or operational files; this demo intentionally has no upload feature.
+
+### Push the deployment branch
+
+```powershell
+git switch deploy/streamlit-demo
+git push -u origin deploy/streamlit-demo
+```
+
+### Local installation and hardware
+
+The existing local installation instructions, Ollama setup, model strategy, GPU notes, security boundaries, tests, and known limitations follow. The local app remains separate and retains its current dependencies in `requirements.txt`.
+
+## Local application: existing functionality
 
 A Windows-first, local-only prototype for confidential industrial document analysis. The target development machine is an ASUS TUF Gaming A15 running Windows 11, with 8 GB system RAM and an NVIDIA RTX 3050 laptop GPU.
 
